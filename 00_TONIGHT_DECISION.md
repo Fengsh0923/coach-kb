@@ -30,11 +30,19 @@
 - `server_mirror/` — 服务器代码本地镜像
 - `README.md` + `.gitignore` — git 项目就位
 
-### 4. 河虾今晚正在跑（这是最关键的协同）
-- 派单 session：`ses_1ed9578a2ffe5Im5lBLXdsaL2v`（OpenCode :4096 真渠道，HTTP 204 已接收）
-- 任务：ICF 8 项核心能力中文 rubric（每项 ACC/PCC 判定差异 + 示例对话 + 反例 + 关系图）
-- **第 1 篇已交付** `competency_01_demonstrates_ethical_practice.md` — 质量超预期：示例对话写到 PCC 真实场景（客户自杀意念，教练边界处理），不是空话
-- 剩 7 篇凌晨预计陆续交付，鳌虾本机会一直监控到河虾全部完成
+### 4. 河虾今晚交付 8/8（这是最关键的协同）
+- 派单 session：`ses_1ed9578a2ffe5Im5lBLXdsaL2v`（OpenCode :4096 真渠道）
+- 任务：ICF 8 项核心能力中文 rubric ✅ **全部交付**
+- 河虾自评 8/10（自暴扣分项：示例丰富度可提升 + 部分推荐链接可验证性弱）
+- 鳌虾验收：8/8 章节齐全，平均 ~1900 中文字符/篇，符合 brief 800-2500 要求
+- 第 1 篇示例（自杀风险处理）写到 PCC 真实场景，不是空话
+- **8 篇已挂上线**：https://www.ai-coach.com.cn/ 首页可点击 → /wiki/competency_NN 可读
+
+### 5. 网站功能升级（凌晨加班）
+- ✅ /wiki/{slug} 路由：markdown + frontmatter 渲染，左侧 sticky 8 项导航
+- ✅ /api/search 朴素 in-memory 搜索：搜"临在"召回 4 篇相关 rubric
+- ✅ 首页 8 项卡片可点击，hover 边框加宽
+- ⏳ FTS5 + sqlite-vec 升级 → 明天 Codex 接管
 
 ---
 
