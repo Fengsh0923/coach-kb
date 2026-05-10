@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.env
+.env.local
+caddy_data/
+caddy_config/
+*.db
+*.sqlite
+.DS_Store
+node_modules/
+dist/

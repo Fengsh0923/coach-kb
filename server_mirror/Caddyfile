@@ -1,0 +1,7 @@
+www.ai-coach.com.cn, ai-coach.com.cn {
+    encode gzip
+    reverse_proxy backend:8000
+    log {
+        output file /var/log/caddy/access.log
+    }
+}

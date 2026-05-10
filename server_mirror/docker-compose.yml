@@ -1,0 +1,23 @@
+services:
+  caddy:
+    image: caddy:2-alpine
+    container_name: coach-kb-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./caddy_data:/data
+      - ./caddy_config:/config
+    depends_on:
+      - backend
+
+  backend:
+    build: ./app
+    container_name: coach-kb-backend
+    restart: unless-stopped
+    expose:
+      - "8000"
+    volumes:
+      - ./app:/app
