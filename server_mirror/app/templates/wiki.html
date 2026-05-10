@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ title }}</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  background: #fafaf7; color: #1a1a1a; line-height: 1.8; min-height: 100vh;
+}
+.layout { display: grid; grid-template-columns: 240px 1fr; max-width: 1180px; margin: 0 auto; gap: 40px; padding: 30px 24px 80px; }
+nav.side { position: sticky; top: 30px; align-self: start; max-height: calc(100vh - 60px); overflow-y: auto; }
+nav.side a.home { display: block; font-weight: 700; color: #c2410c; text-decoration: none; margin-bottom: 16px; font-size: 1.1rem; }
+nav.side h3 { font-size: 0.78rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #999; margin: 14px 0 8px; }
+nav.side a.comp { display: block; padding: 7px 10px; color: #444; text-decoration: none; border-radius: 5px; font-size: 0.92rem; transition: background 0.1s; }
+nav.side a.comp:hover { background: #f5f1e8; color: #c2410c; }
+nav.side a.comp.active { background: #c2410c; color: white; font-weight: 500; }
+nav.side a.comp .num { display: inline-block; width: 22px; color: #c2410c; font-weight: 600; }
+nav.side a.comp.active .num { color: white; }
+main { min-width: 0; }
+.crumb { font-size: 0.88rem; color: #888; margin-bottom: 14px; }
+.crumb a { color: #c2410c; text-decoration: none; }
+.crumb a:hover { text-decoration: underline; }
+h1.page-title { font-size: 2.1rem; font-weight: 700; letter-spacing: -0.01em; margin-bottom: 8px; }
+.subtitle { color: #888; font-size: 1rem; margin-bottom: 6px; }
+.tags { margin-bottom: 32px; }
+.tag { display: inline-block; padding: 3px 10px; background: #fff3e8; color: #c2410c; border-radius: 4px; font-size: 0.78rem; margin-right: 6px; }
+article { max-width: 720px; }
+article h1 { display: none; }
+article h2 { font-size: 1.4rem; margin: 36px 0 14px; padding-bottom: 8px; border-bottom: 1px solid #e5e5e0; font-weight: 600; }
+article h3 { font-size: 1.1rem; margin: 24px 0 10px; font-weight: 600; }
+article p { margin-bottom: 14px; }
+article ul, article ol { margin: 12px 0 14px 22px; }
+article li { margin-bottom: 6px; }
+article blockquote { border-left: 3px solid #c2410c; padding: 4px 0 4px 16px; margin: 14px 0; color: #555; background: #fff8f0; }
+article blockquote p { margin-bottom: 8px; }
+article code { background: #f0ebe0; padding: 2px 6px; border-radius: 3px; font-size: 0.9em; font-family: ui-monospace, "SF Mono", monospace; }
+article a { color: #c2410c; text-decoration: underline; text-underline-offset: 2px; }
+article hr { border: none; border-top: 1px solid #e5e5e0; margin: 30px 0; }
+article em { color: #777; font-style: italic; }
+article strong { color: #1a1a1a; }
+@media (max-width: 760px) {
+  .layout { grid-template-columns: 1fr; }
+  nav.side { position: static; max-height: none; padding: 14px; background: white; border-radius: 8px; border: 1px solid #e5e5e0; }
+  h1.page-title { font-size: 1.5rem; }
+}
+</style>
+</head>
+<body>
+<div class="layout">
+<nav class="side">
+  <a class="home" href="/">← Coach KB</a>
+  <h3>ICF 8 项核心能力</h3>
+  {% for c in all %}
+    <a class="comp {% if c.icf_id == icf_id %}active{% endif %}" href="/wiki/{{ c.slug }}">
+      <span class="num">{{ c.icf_id }}</span>{{ c.zh }}
+    </a>
+  {% endfor %}
+</nav>
+<main>
+  <div class="crumb"><a href="/">首页</a> / <span>核心能力 · {{ category }}</span> / {{ zh_name }}</div>
+  <h1 class="page-title">{{ icf_id }}. {{ zh_name }}</h1>
+  <div class="subtitle">{{ en_name }}</div>
+  <div class="tags">
+    <span class="tag">{{ category }}</span>
+    {% for lv in levels %}<span class="tag">{{ lv }}</span>{% endfor %}
+  </div>
+  <article>{{ html | safe }}</article>
+</main>
+</div>
+</body>
+</html>

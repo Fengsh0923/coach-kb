@@ -9,10 +9,7 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body {
   font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
-  background: #fafaf7;
-  color: #1a1a1a;
-  line-height: 1.7;
-  min-height: 100vh;
+  background: #fafaf7; color: #1a1a1a; line-height: 1.7; min-height: 100vh;
 }
 .container { max-width: 880px; margin: 0 auto; padding: 0 24px; }
 header { padding: 80px 0 40px; border-bottom: 1px solid #e5e5e0; }
@@ -20,43 +17,29 @@ h1 { font-size: 2.4rem; font-weight: 700; letter-spacing: -0.02em; margin-bottom
 h1 .accent { color: #c2410c; }
 .tagline { color: #666; font-size: 1.05rem; }
 .search-wrap { padding: 40px 0; }
-.search-box {
-  width: 100%; padding: 18px 20px; font-size: 1.1rem;
-  border: 1.5px solid #d4d4d0; border-radius: 8px;
-  background: white; transition: border-color 0.15s;
-  font-family: inherit;
-}
+.search-box { width: 100%; padding: 18px 20px; font-size: 1.1rem; border: 1.5px solid #d4d4d0; border-radius: 8px; background: white; font-family: inherit; }
 .search-box:focus { outline: none; border-color: #c2410c; }
+#results { margin-top: 12px; }
+.result-item { padding: 12px 16px; background: white; border: 1px solid #e5e5e0; border-radius: 6px; margin-bottom: 8px; }
+.result-item a { color: #c2410c; font-weight: 600; text-decoration: none; }
+.result-item .snippet { color: #666; font-size: 0.9rem; margin-top: 4px; }
 .cards { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; padding: 20px 0 60px; }
-.card {
-  padding: 24px; background: white; border: 1px solid #e5e5e0;
-  border-radius: 8px; transition: transform 0.15s, box-shadow 0.15s;
-  cursor: pointer;
-}
+.card { padding: 24px; background: white; border: 1px solid #e5e5e0; border-radius: 8px; transition: transform 0.15s, box-shadow 0.15s; }
 .card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.06); }
 .card-icon { font-size: 1.6rem; margin-bottom: 10px; }
 .card-title { font-size: 1.1rem; font-weight: 600; margin-bottom: 6px; }
 .card-desc { font-size: 0.92rem; color: #666; }
 .competencies { padding: 40px 0; }
-.competencies h2 { font-size: 1.4rem; margin-bottom: 20px; }
+.competencies h2 { font-size: 1.4rem; margin-bottom: 8px; }
+.competencies .lead { color: #777; font-size: 0.95rem; margin-bottom: 20px; }
 .comp-list { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px; }
-.comp-item {
-  padding: 10px 14px; border-left: 3px solid #c2410c;
-  background: white; font-size: 0.95rem;
-  display: flex; justify-content: space-between; align-items: center;
-}
+.comp-item { padding: 10px 14px; border-left: 3px solid #c2410c; background: white; font-size: 0.95rem; display: flex; justify-content: space-between; align-items: center; text-decoration: none; color: inherit; transition: background 0.15s, border-left-width 0.15s; }
+.comp-item:hover { background: #fff3e8; border-left-width: 6px; }
 .comp-item .num { font-weight: 600; color: #c2410c; margin-right: 8px; }
 .comp-item .badge { font-size: 0.75rem; color: #999; }
 footer { padding: 60px 0 40px; color: #999; font-size: 0.85rem; text-align: center; border-top: 1px solid #e5e5e0; }
-.scaffold-notice {
-  background: #fff7ed; border: 1px solid #fed7aa; padding: 12px 16px;
-  border-radius: 6px; margin-top: 30px; font-size: 0.92rem; color: #9a3412;
-}
-@media (max-width: 700px) {
-  .cards { grid-template-columns: 1fr; }
-  .comp-list { grid-template-columns: 1fr; }
-  h1 { font-size: 1.8rem; }
-}
+.live-notice { background: #ecfdf5; border: 1px solid #a7f3d0; padding: 10px 14px; border-radius: 6px; margin-top: 24px; font-size: 0.9rem; color: #047857; }
+@media (max-width: 700px) { .cards, .comp-list { grid-template-columns: 1fr; } h1 { font-size: 1.8rem; } }
 </style>
 </head>
 <body>
@@ -69,13 +52,12 @@ footer { padding: 60px 0 40px; color: #999; font-size: 0.85rem; text-align: cent
 
 <main class="container">
   <div class="search-wrap">
-    <input type="text" class="search-box" placeholder="搜索教练能力、流派、术语… 例如「PCC 唤起觉察」"
-           hx-get="/api/search" hx-trigger="keyup changed delay:300ms" hx-target="#results"
-           disabled>
+    <input type="text" class="search-box" placeholder="搜索：例如「PCC 唤起觉察」「保持临在」「伦理边界」"
+           oninput="search(this.value)">
     <div id="results"></div>
-    <div class="scaffold-notice">
-      🚧 <strong>骨架阶段</strong>：搜索/问答/对话回放后端将于明天上线，今晚先放骨架与种子内容方向。
-      内容由鳌虾 + 河虾 + 甜虾·Codex + 甜虾·Kimi 协同搭建中。
+    <div class="live-notice">
+      ✅ <strong>种子内容已上线</strong>：ICF 8 项核心能力中文 rubric（河虾今晚交付）。
+      明天甜虾·Codex 接 RAG 问答 + 甜虾·Kimi 升级前端，鳌虾终审整合。
     </div>
   </div>
 
@@ -83,40 +65,61 @@ footer { padding: 60px 0 40px; color: #999; font-size: 0.85rem; text-align: cent
     <div class="card">
       <div class="card-icon">🔍</div>
       <div class="card-title">知识检索</div>
-      <div class="card-desc">关键词 + 语义双路搜索，结构化 wiki 页</div>
+      <div class="card-desc">关键词 + 语义双路搜索（v1 朴素版本上线）</div>
     </div>
     <div class="card">
       <div class="card-icon">💬</div>
       <div class="card-title">教练问答</div>
-      <div class="card-desc">基于知识库的 RAG 问答，附引用源链接</div>
+      <div class="card-desc">基于知识库的 RAG 问答（明天上线）</div>
     </div>
     <div class="card">
       <div class="card-icon">📝</div>
       <div class="card-title">对话回放评估</div>
-      <div class="card-desc">按 ICF 8 项核心能力打分 + 改进建议</div>
+      <div class="card-desc">按 ICF 8 项核心能力打分 + 改进建议（明天上线）</div>
     </div>
   </section>
 
   <section class="competencies">
-    <h2>ICF 8 项核心能力（即将上线）</h2>
+    <h2>ICF 8 项核心能力</h2>
+    <p class="lead">点击任意一项查看详细 rubric · ACC vs PCC 判定差异 · 示例对话 · 常见误区</p>
     <div class="comp-list">
-      <div class="comp-item"><span><span class="num">1</span>展现伦理实践</span><span class="badge">Foundation</span></div>
-      <div class="comp-item"><span><span class="num">2</span>具备教练心态</span><span class="badge">Foundation</span></div>
-      <div class="comp-item"><span><span class="num">3</span>建立与维护契约</span><span class="badge">Co-Creating</span></div>
-      <div class="comp-item"><span><span class="num">4</span>培育信任与安全</span><span class="badge">Co-Creating</span></div>
-      <div class="comp-item"><span><span class="num">5</span>保持临在</span><span class="badge">Co-Creating</span></div>
-      <div class="comp-item"><span><span class="num">6</span>主动倾听</span><span class="badge">Communicating</span></div>
-      <div class="comp-item"><span><span class="num">7</span>唤起觉察</span><span class="badge">Communicating</span></div>
-      <div class="comp-item"><span><span class="num">8</span>促进客户成长</span><span class="badge">Cultivating</span></div>
+      {% for c in competencies %}
+        <a class="comp-item" href="/wiki/{{ c.slug }}">
+          <span><span class="num">{{ c.icf_id }}</span>{{ c.zh }}</span>
+          <span class="badge">{{ c.category }}</span>
+        </a>
+      {% endfor %}
     </div>
   </section>
 </main>
 
 <footer>
   <div class="container">
-    <p>Coach KB v1 · 由鳌虾 + 飞虾队搭建 · 2026-05</p>
+    <p>Coach KB v1 · 由鳌虾 + 飞虾队（河虾 / 甜虾·Codex / 甜虾·Kimi）协同搭建 · 2026-05</p>
     <p style="margin-top:6px;">内容遵循版权边界：ICF 官方材料仅摘要+链接 · 经典著作仅笔记不全文 · 公开材料注明来源</p>
   </div>
 </footer>
+
+<script>
+let searchTimer;
+async function search(q) {
+  clearTimeout(searchTimer);
+  const box = document.getElementById('results');
+  if (!q || q.length < 2) { box.innerHTML = ''; return; }
+  searchTimer = setTimeout(async () => {
+    try {
+      const r = await fetch('/api/search?q=' + encodeURIComponent(q));
+      const data = await r.json();
+      if (!data.results || data.results.length === 0) {
+        box.innerHTML = '<div class="result-item"><span class="snippet">无匹配结果</span></div>';
+        return;
+      }
+      box.innerHTML = data.results.map(item =>
+        `<div class="result-item"><a href="/wiki/${item.slug}">${item.title}</a><div class="snippet">${item.snippet}…</div></div>`
+      ).join('');
+    } catch(e) { box.innerHTML = '<div class="result-item"><span class="snippet">搜索失败</span></div>'; }
+  }, 300);
+}
+</script>
 </body>
 </html>
