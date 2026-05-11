@@ -23,6 +23,7 @@ import frontmatter
 import markdown as md_lib
 
 from lib import db, llm
+import routes_eval
 
 APP_DIR = Path(__file__).parent
 CONTENT_DIR = APP_DIR / "content"
@@ -191,3 +192,6 @@ async def qa(request: Request):
         yield "event: done\ndata: {}\n\n"
 
     return StreamingResponse(gen(), media_type="text/event-stream")
+
+
+app.include_router(routes_eval.router)
