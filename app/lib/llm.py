@@ -1,9 +1,41 @@
-"""LLM + embedding clients. Main: GLM-4.6 via Anthropic Messages API. Embed: OpenAI."""
+"""LLM + embedding clients. Main: GLM-4.6 via Anthropic Messages API. Embed: DashScope."""
 from __future__ import annotations
 import os
 import json
 import httpx
 from typing import AsyncGenerator
+from contextvars import ContextVar
+
+# Allow caller to tag the endpoint via context var (best-effort, never required)
+_endpoint_tag: ContextVar[str] = ContextVar("_endpoint_tag", default="unknown")
+
+
+def set_endpoint(name: str):
+    _endpoint_tag.set(name)
+
+
+# Pricing (USD per 1M tokens) — adjust when providers change
+PRICING = {
+    "glm-4.6": {"in": 0.6, "out": 2.2},     # 智谱国际 Anthropic-compatible
+    "glm-5.1": {"in": 0.6, "out": 2.2},
+    "glm-4.5": {"in": 0.5, "out": 1.5},
+    "text-embedding-v3": {"in": 0.05, "out": 0},   # DashScope 估值
+}
+
+
+def _calc_cost(model: str, in_t: int, out_t: int) -> float:
+    p = PRICING.get(model, {"in": 0.5, "out": 1.5})
+    return (in_t * p["in"] + out_t * p["out"]) / 1_000_000
+
+
+def _record(provider: str, model: str, in_t: int, out_t: int):
+    try:
+        from lib import db as _db
+        _db.log_usage(endpoint=_endpoint_tag.get(), provider=provider, model=model,
+                       input_tokens=in_t, output_tokens=out_t,
+                       cost_usd=_calc_cost(model, in_t, out_t))
+    except Exception:
+        pass
 
 GLM_KEY = os.environ.get("GLM_INTL_API_KEY", "")
 GLM_BASE = os.environ.get("GLM_INTL_BASE_URL", "https://api.z.ai/api/anthropic")
@@ -26,7 +58,12 @@ async def embed(texts: list[str]) -> list[list[float]]:
                   "encoding_format": "float"},
         )
         r.raise_for_status()
-        return [d["embedding"] for d in r.json()["data"]]
+        j = r.json()
+        usage = j.get("usage", {})
+        _record("dashscope", EMBED_MODEL,
+                in_t=usage.get("prompt_tokens") or usage.get("total_tokens", 0),
+                out_t=0)
+        return [d["embedding"] for d in j["data"]]
 
 
 async def chat_complete(*, system: str, user: str, max_tokens: int = 2048, model: str | None = None) -> str:
@@ -47,6 +84,10 @@ async def chat_complete(*, system: str, user: str, max_tokens: int = 2048, model
         r.raise_for_status()
         data = r.json()
         parts = data.get("content", [])
+        usage = data.get("usage", {})
+        _record("glm-intl", model or GLM_MODEL,
+                in_t=usage.get("input_tokens", 0),
+                out_t=usage.get("output_tokens", 0))
         return "".join(p.get("text", "") for p in parts if p.get("type") == "text")
 
 
@@ -66,6 +107,7 @@ async def chat_stream(*, system: str, user: str, max_tokens: int = 2048) -> Asyn
             },
         ) as r:
             r.raise_for_status()
+            in_t = 0; out_t = 0
             async for line in r.aiter_lines():
                 if not line.startswith("data: "):
                     continue
@@ -76,7 +118,16 @@ async def chat_stream(*, system: str, user: str, max_tokens: int = 2048) -> Asyn
                     ev = json.loads(payload)
                 except Exception:
                     continue
-                if ev.get("type") == "content_block_delta":
+                t = ev.get("type")
+                if t == "content_block_delta":
                     delta = ev.get("delta", {})
                     if delta.get("type") == "text_delta":
                         yield delta.get("text", "")
+                elif t == "message_start":
+                    usage = ev.get("message", {}).get("usage", {})
+                    in_t = usage.get("input_tokens", in_t)
+                    out_t = usage.get("output_tokens", out_t)
+                elif t == "message_delta":
+                    usage = ev.get("usage", {})
+                    out_t = usage.get("output_tokens", out_t)
+            _record("glm-intl", GLM_MODEL, in_t=in_t, out_t=out_t)

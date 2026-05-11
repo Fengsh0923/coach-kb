@@ -9,7 +9,7 @@ from collections import defaultdict, deque
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
-from lib import db
+from lib import db, llm
 from lib.eval import evaluate
 
 router = APIRouter()
@@ -84,6 +84,7 @@ async def eval_endpoint(request: Request):
 
     ua = request.headers.get("user-agent", "")
     sid = _session_id(ip, ua)
+    llm.set_endpoint("eval")
     try:
         with db.connect() as conn:
             result = await evaluate(transcript, conn)

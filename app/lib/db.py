@@ -54,7 +54,33 @@ CREATE TABLE IF NOT EXISTS eval_session (
   transcript TEXT, result_json TEXT,
   ts DATETIME DEFAULT CURRENT_TIMESTAMP
 );
+CREATE TABLE IF NOT EXISTS usage_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  endpoint TEXT,
+  provider TEXT,
+  model TEXT,
+  input_tokens INTEGER DEFAULT 0,
+  output_tokens INTEGER DEFAULT 0,
+  cost_usd REAL DEFAULT 0,
+  ts DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_usage_ts ON usage_log(ts);
 """
+
+
+def log_usage(*, endpoint: str, provider: str, model: str,
+              input_tokens: int = 0, output_tokens: int = 0, cost_usd: float = 0.0):
+    """Best-effort usage record—never raises."""
+    try:
+        with connect() as conn:
+            conn.execute(
+                "INSERT INTO usage_log (endpoint, provider, model, input_tokens, output_tokens, cost_usd) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                (endpoint, provider, model, input_tokens, output_tokens, cost_usd),
+            )
+            conn.commit()
+    except Exception as e:
+        print(f"[usage_log] {e}")
 
 
 def init_schema():

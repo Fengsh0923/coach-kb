@@ -64,10 +64,20 @@ async def startup():
         print(f"[startup] db init failed (non-fatal): {e}")
 
 
+ICP_FILING = os.environ.get("ICP_FILING_NUMBER", "")
+ICP_URL = "https://beian.miit.gov.cn/"
+
+
+def _ctx(extra: dict | None = None) -> dict:
+    base = {"competencies": list_competencies(), "icp": ICP_FILING, "icp_url": ICP_URL}
+    if extra: base.update(extra)
+    return base
+
+
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request):
     return templates.TemplateResponse(request=request, name="index.html",
-                                       context={"competencies": list_competencies()})
+                                       context=_ctx())
 
 
 @app.get("/wiki/{slug}", response_class=HTMLResponse)
@@ -134,6 +144,7 @@ def health():
 
 @app.get("/api/search")
 async def search(q: str = "", k: int = 10):
+    llm.set_endpoint("search")
     """Hybrid search: FTS5 (trigram) + vec (semantic), RRF-fused."""
     q = (q or "").strip()
     if not q:
@@ -214,6 +225,7 @@ async def qa(request: Request):
         return JSONResponse({"error": "q is required"}, status_code=400)
     if len(question) > 1000:
         return JSONResponse({"error": "question too long (max 1000 chars)"}, status_code=400)
+    llm.set_endpoint("qa")
 
     # Retrieve top-K context
     citations = []

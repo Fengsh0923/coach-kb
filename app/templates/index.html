@@ -101,8 +101,13 @@ footer { padding: 60px 0 40px; color: #999; font-size: 0.85rem; text-align: cent
 
 <footer>
   <div class="container">
-    <p>Coach KB v1 · 由鳌虾 + 飞虾队（河虾 / 甜虾·Codex / 甜虾·Kimi）协同搭建 · 2026-05</p>
+    <p>Coach KB v1 · 由鳌虾 + 飞虾队（河虾 / 克虾）协同搭建 · 2026-05</p>
     <p style="margin-top:6px;">内容遵循版权边界：ICF 官方材料仅摘要+链接 · 经典著作仅笔记不全文 · 公开材料注明来源</p>
+    {% if icp %}
+      <p style="margin-top:10px;">
+        <a href="{{ icp_url }}" target="_blank" rel="noopener" style="color:#999;text-decoration:none;">{{ icp }}</a>
+      </p>
+    {% endif %}
   </div>
 </footer>
 
