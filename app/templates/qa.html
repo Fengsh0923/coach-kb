@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>问答 · Coach KB</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; background: #fafaf7; color: #1a1a1a; line-height: 1.8; min-height: 100vh; }
+.layout { max-width: 760px; margin: 0 auto; padding: 30px 24px 80px; }
+.crumb { font-size: 0.88rem; color: #888; margin-bottom: 14px; }
+.crumb a { color: #c2410c; text-decoration: none; }
+.crumb a:hover { text-decoration: underline; }
+h1 { font-size: 1.8rem; font-weight: 700; margin-bottom: 6px; }
+.lead { color: #666; margin-bottom: 30px; font-size: 0.96rem; }
+.input-area { background: white; border: 1.5px solid #d4d4d0; border-radius: 8px; padding: 14px 16px; margin-bottom: 14px; transition: border-color 0.15s; }
+.input-area:focus-within { border-color: #c2410c; }
+textarea { width: 100%; min-height: 100px; border: none; outline: none; font-family: inherit; font-size: 1rem; resize: vertical; line-height: 1.7; background: transparent; }
+.input-foot { display: flex; justify-content: space-between; align-items: center; padding-top: 10px; border-top: 1px solid #f0eee8; margin-top: 8px; color: #999; font-size: 0.82rem; }
+.btn { padding: 6px 14px; background: #c2410c; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 0.9rem; font-family: inherit; }
+.btn:hover { background: #9a3412; }
+.btn:disabled { background: #ccc; cursor: not-allowed; }
+.examples { color: #888; font-size: 0.85rem; margin-bottom: 24px; }
+.examples a { color: #c2410c; text-decoration: none; margin-right: 14px; cursor: pointer; }
+.examples a:hover { text-decoration: underline; }
+.answer { background: white; border: 1px solid #e5e5e0; border-radius: 8px; padding: 22px 24px; margin-top: 20px; min-height: 60px; white-space: pre-wrap; }
+.answer.empty { color: #aaa; text-align: center; padding: 40px; }
+.cite-strip { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 18px; padding-top: 14px; border-top: 1px solid #f0eee8; }
+.cite { display: inline-block; padding: 4px 10px; background: #fff7ed; border: 1px solid #fed7aa; color: #9a3412; border-radius: 4px; font-size: 0.82rem; text-decoration: none; }
+.cite:hover { background: #fed7aa; }
+.cite .num { font-weight: 700; }
+.status { font-size: 0.85rem; color: #999; margin-top: 8px; }
+.status.error { color: #b91c1c; }
+@media (max-width: 700px) { h1 { font-size: 1.5rem; } }
+</style>
+</head>
+<body>
+<div class="layout">
+  <div class="crumb"><a href="/">首页</a> / 问答</div>
+  <h1>问 Coach KB</h1>
+  <p class="lead">基于 ICF 8 项核心能力知识库的 RAG 问答。答案附引用源，可点击回原文。</p>
+
+  <div class="input-area">
+    <textarea id="q" placeholder="例如：PCC 级的「唤起觉察」怎么判定，跟 ACC 区别在哪？" autofocus></textarea>
+    <div class="input-foot">
+      <span><kbd>⌘</kbd> + <kbd>Enter</kbd> 提交</span>
+      <button class="btn" id="submit" onclick="ask()">提问</button>
+    </div>
+  </div>
+
+  <div class="examples">
+    试试：
+    <a onclick="setQ('PCC 级的唤起觉察跟 ACC 区别在哪？')">PCC vs ACC 唤起觉察</a>
+    <a onclick="setQ('客户提到自杀念头时，教练该怎么处理？')">客户的自杀念头</a>
+    <a onclick="setQ('什么叫保持临在？跟主动倾听有什么不同？')">临在 vs 主动倾听</a>
+  </div>
+
+  <div id="answer" class="answer empty">回答会在这里出现……</div>
+  <div id="status" class="status"></div>
+  <div id="cites" class="cite-strip" style="display:none;"></div>
+</div>
+
+<script>
+const qEl = document.getElementById('q');
+const answerEl = document.getElementById('answer');
+const statusEl = document.getElementById('status');
+const citesEl = document.getElementById('cites');
+const btn = document.getElementById('submit');
+
+function setQ(s) { qEl.value = s; qEl.focus(); }
+
+qEl.addEventListener('keydown', e => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') ask();
+});
+
+async function ask() {
+  const q = qEl.value.trim();
+  if (!q) return;
+  btn.disabled = true; btn.textContent = '思考中…';
+  answerEl.classList.remove('empty');
+  answerEl.textContent = '';
+  citesEl.style.display = 'none';
+  citesEl.innerHTML = '';
+  statusEl.textContent = '检索中…';
+  statusEl.classList.remove('error');
+
+  try {
+    const res = await fetch('/api/qa', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({q})
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '';
+    let citations = [];
+    let started = false;
+
+    while (true) {
+      const {done, value} = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, {stream: true});
+      const events = buf.split('\n\n');
+      buf = events.pop() || '';
+      for (const ev of events) {
+        if (!ev.trim()) continue;
+        const lines = ev.split('\n');
+        let evType = 'message', data = '';
+        for (const ln of lines) {
+          if (ln.startsWith('event: ')) evType = ln.slice(7);
+          else if (ln.startsWith('data: ')) data += ln.slice(6);
+        }
+        if (evType === 'citations') {
+          citations = JSON.parse(data);
+          citesEl.innerHTML = citations.map((c, i) =>
+            `<a class="cite" href="/wiki/${c.slug}" target="_blank"><span class="num">[${i+1}]</span> ${c.title}</a>`
+          ).join('');
+          citesEl.style.display = 'flex';
+          statusEl.textContent = '生成中…';
+        } else if (evType === 'done') {
+          statusEl.textContent = '完成';
+          setTimeout(() => statusEl.textContent = '', 2000);
+        } else {
+          try {
+            const p = JSON.parse(data);
+            if (p.chunk) { answerEl.textContent += p.chunk; started = true; }
+            if (p.error) { statusEl.textContent = '错误：' + p.error; statusEl.classList.add('error'); }
+          } catch(_) {}
+        }
+      }
+    }
+  } catch (e) {
+    statusEl.textContent = '请求失败：' + e.message;
+    statusEl.classList.add('error');
+  } finally {
+    btn.disabled = false; btn.textContent = '提问';
+  }
+}
+</script>
+</body>
+</html>

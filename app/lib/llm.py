@@ -9,18 +9,21 @@ GLM_KEY = os.environ.get("GLM_INTL_API_KEY", "")
 GLM_BASE = os.environ.get("GLM_INTL_BASE_URL", "https://api.z.ai/api/anthropic")
 GLM_MODEL = os.environ.get("GLM_MODEL", "glm-4.6")
 
-OPENAI_KEY = os.environ.get("OPENAI_API_KEY", "")
-OPENAI_EMBED_MODEL = "text-embedding-3-small"
+EMBED_KEY = os.environ.get("DASHSCOPE_API_KEY") or os.environ.get("QWEN_API_KEY", "")
+EMBED_BASE = os.environ.get("EMBED_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1")
+EMBED_MODEL = os.environ.get("EMBED_MODEL", "text-embedding-v3")
 
 
 async def embed(texts: list[str]) -> list[list[float]]:
-    if not OPENAI_KEY:
-        raise RuntimeError("OPENAI_API_KEY not set")
+    """DashScope OpenAI-compatible embedding (China-friendly, 1024 dim)."""
+    if not EMBED_KEY:
+        raise RuntimeError("DASHSCOPE_API_KEY / QWEN_API_KEY not set")
     async with httpx.AsyncClient(timeout=60) as client:
         r = await client.post(
-            "https://api.openai.com/v1/embeddings",
-            headers={"Authorization": f"Bearer {OPENAI_KEY}", "Content-Type": "application/json"},
-            json={"model": OPENAI_EMBED_MODEL, "input": texts},
+            f"{EMBED_BASE}/embeddings",
+            headers={"Authorization": f"Bearer {EMBED_KEY}", "Content-Type": "application/json"},
+            json={"model": EMBED_MODEL, "input": texts, "dimensions": 1024,
+                  "encoding_format": "float"},
         )
         r.raise_for_status()
         return [d["embedding"] for d in r.json()["data"]]
