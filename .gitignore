@@ -1,7 +1,9 @@
 __pycache__/
 *.pyc
 .env
-.env.local
+.env.*
+backend.env
+*.env.local
 caddy_data/
 caddy_config/
 *.db
@@ -9,3 +11,4 @@ caddy_config/
 .DS_Store
 node_modules/
 dist/
+_BRIEF_*.md

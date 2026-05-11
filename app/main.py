@@ -96,6 +96,25 @@ def eval_page(request: Request):
                                        context={"competencies": list_competencies()})
 
 
+@app.get("/resources", response_class=HTMLResponse)
+def resources_page(request: Request):
+    f = CONTENT_DIR / "resources_curated.md"
+    if not f.exists():
+        raise HTTPException(404, "资源索引未就绪")
+    post = frontmatter.load(f)
+    html = md_lib.markdown(post.content, extensions=["fenced_code", "tables", "toc"])
+    return templates.TemplateResponse(request=request, name="wiki.html", context={
+        "title": "中文教练资源精选 · Coach KB",
+        "zh_name": post.get("title", "中文教练资源精选"),
+        "en_name": "Curated Chinese Coaching Resources",
+        "category": "Reference",
+        "icf_id": "",
+        "levels": [],
+        "html": html,
+        "all": list_competencies(),
+    })
+
+
 @app.get("/api")
 def api_info():
     return {"app": "Coach KB v1", "status": "live",
@@ -147,12 +166,49 @@ async def search(q: str = "", k: int = 10):
         return JSONResponse({"q": q, "error": str(e), "results": []}, status_code=500)
 
 
+# /api/qa 单 IP 限速：5 次/分钟 + 50 次/小时（防 LLM 滥用烧钱）
+import time as _time
+from collections import defaultdict, deque
+_qa_minute: dict[str, deque] = defaultdict(deque)
+_qa_hour: dict[str, deque] = defaultdict(deque)
+
+
+def _qa_client_ip(request: Request) -> str:
+    fwd = request.headers.get("x-forwarded-for", "")
+    if fwd:
+        return fwd.split(",", 1)[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
+def _qa_rate_limited(ip: str) -> tuple[bool, str]:
+    now = _time.time()
+    m = _qa_minute[ip]
+    while m and now - m[0] > 60:
+        m.popleft()
+    if len(m) >= 5:
+        return True, "5/minute exceeded"
+    h = _qa_hour[ip]
+    while h and now - h[0] > 3600:
+        h.popleft()
+    if len(h) >= 50:
+        return True, "50/hour exceeded"
+    m.append(now); h.append(now)
+    return False, ""
+
+
 @app.post("/api/qa")
 async def qa(request: Request):
+    ip = _qa_client_ip(request)
+    limited, reason = _qa_rate_limited(ip)
+    if limited:
+        return JSONResponse({"error": f"rate limit: {reason}"}, status_code=429)
+
     body = await request.json()
     question = (body.get("q") or "").strip()
     if not question:
         return JSONResponse({"error": "q is required"}, status_code=400)
+    if len(question) > 1000:
+        return JSONResponse({"error": "question too long (max 1000 chars)"}, status_code=400)
 
     # Retrieve top-K context
     citations = []
