@@ -90,6 +90,12 @@ def qa_page(request: Request):
                                        context={"competencies": list_competencies()})
 
 
+@app.get("/eval", response_class=HTMLResponse)
+def eval_page(request: Request):
+    return templates.TemplateResponse(request=request, name="eval.html",
+                                       context={"competencies": list_competencies()})
+
+
 @app.get("/api")
 def api_info():
     return {"app": "Coach KB v1", "status": "live",
