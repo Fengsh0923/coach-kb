@@ -56,6 +56,22 @@ def list_competencies():
     return items
 
 
+def list_tools():
+    """List practical tool docs (tool_*.md)."""
+    items = []
+    for f in sorted(CONTENT_DIR.glob("tool_*.md")):
+        try:
+            post = frontmatter.load(f)
+            items.append({
+                "slug": f.stem,
+                "title": post.get("title", f.stem),
+                "category": post.get("category", "Reference"),
+            })
+        except Exception:
+            continue
+    return items
+
+
 @app.on_event("startup")
 async def startup():
     try:
@@ -69,7 +85,8 @@ ICP_URL = "https://beian.miit.gov.cn/"
 
 
 def _ctx(extra: dict | None = None) -> dict:
-    base = {"competencies": list_competencies(), "icp": ICP_FILING, "icp_url": ICP_URL}
+    base = {"competencies": list_competencies(), "tools": list_tools(),
+            "icp": ICP_FILING, "icp_url": ICP_URL}
     if extra: base.update(extra)
     return base
 

@@ -79,6 +79,21 @@ footer { padding: 60px 0 40px; color: #999; font-size: 0.85rem; text-align: cent
     </a>
   </section>
 
+  {% if tools %}
+  <section class="competencies" style="padding-bottom: 0;">
+    <h2 style="margin-bottom:8px;">🛠 教练实务工具</h2>
+    <p class="lead" style="margin-bottom:14px;">F哥 ICF 培训资料 + ICF 官方校准的实操指引：认证路径 / 小时数记录 / 协议模板 / CCE 继续教育</p>
+    <div class="comp-list">
+      {% for t in tools %}
+        <a class="comp-item" href="/wiki/{{ t.slug }}">
+          <span><span class="num">🛠</span>{{ t.title }}</span>
+          <span class="badge">{{ t.category }}</span>
+        </a>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
   <section class="competencies" style="padding-bottom: 0;">
     <h2 style="margin-bottom:8px;">📚 资源精选</h2>
     <p class="lead" style="margin-bottom:14px;">河虾整理的 47 条中文教练学习者公开资源（书籍 / 课程 / 公众号 / 音视频）</p>

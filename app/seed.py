@@ -15,7 +15,7 @@ CONTENT_DIR = Path(__file__).parent / "content"
 
 async def main():
     db.init_schema()
-    files = sorted(CONTENT_DIR.glob("competency_*.md"))
+    files = sorted(list(CONTENT_DIR.glob("competency_*.md")) + list(CONTENT_DIR.glob("tool_*.md")))
     if not files:
         print("⚠️  no markdown files found in", CONTENT_DIR)
         return
@@ -39,7 +39,7 @@ async def main():
             doc_id = db.upsert_doc(
                 conn,
                 slug=f.stem,
-                title=post.get("zh_name", f.stem),
+                title=post.get("zh_name") or post.get("title") or f.stem,
                 category=post.get("category", ""),
                 content_md=post.content,
                 meta={
@@ -53,13 +53,17 @@ async def main():
         db.rebuild_fts(conn)
         print("FTS rebuilt.")
 
-        # 3. Compute embeddings (batch)
+        # 3. Compute embeddings (one at a time — DashScope batch has tight limits)
         docs = db.all_docs(conn)
-        texts = [f"{d['title']}\n\n{d['content_md']}" for d in docs]
-        print(f"embedding {len(texts)} docs…")
-        embeddings = await llm.embed(texts)
-        for d, e in zip(docs, embeddings):
-            db.upsert_vec(conn, d["id"], e)
+        print(f"embedding {len(docs)} docs (one by one)…")
+        for d in docs:
+            text = f"{d['title']}\n\n{d['content_md']}"
+            try:
+                emb = (await llm.embed([text]))[0]
+                db.upsert_vec(conn, d["id"], emb)
+                print(f"  ✓ {d['slug']}")
+            except Exception as e:
+                print(f"  ✗ {d['slug']}: {e}")
         conn.commit()
         print(f"✅ seeded {len(docs)} docs with embeddings.")
 
