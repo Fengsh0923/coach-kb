@@ -71,5 +71,15 @@ article strong { color: #1a1a1a; }
 </main>
 </div>
 {% include "_icp.html" %}
+<script>
+// 外链自动新 tab 打开，本站 wiki 链接保持当前 tab
+document.querySelectorAll('article a[href]').forEach(a => {
+  const href = a.getAttribute('href');
+  if (href && (href.startsWith('http://') || href.startsWith('https://'))) {
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+  }
+});
+</script>
 </body>
 </html>
