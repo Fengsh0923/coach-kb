@@ -31,6 +31,11 @@ CONTENT_DIR = APP_DIR / "content"
 app = FastAPI(title="Coach KB v1")
 templates = Jinja2Templates(directory=str(APP_DIR / "templates"))
 
+# Note: 全局 IP 限速暂未实装 —— Docker bridge 网络下 Caddy 转发到 backend 的 XFF
+# 会显示宿主机 IP（NAT 覆盖），导致按 XFF 限速会把全部用户合并成一个桶，反而误伤。
+# 防 LLM 烧钱已由 /api/qa (5/min + 50/hour) 和 /api/eval (3/min) 在 backend 内部 cover。
+# WAF (恶意路径+UA → 403) 已由 Caddy 层独立完成。
+
 
 def list_competencies():
     """Read from filesystem (cheap, no DB needed for nav)."""
