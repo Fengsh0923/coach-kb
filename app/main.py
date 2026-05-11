@@ -87,7 +87,7 @@ def wiki(request: Request, slug: str):
         raise HTTPException(404, "页面未找到")
     post = frontmatter.load(f)
     html = md_lib.markdown(post.content, extensions=["fenced_code", "tables", "toc"])
-    return templates.TemplateResponse(request=request, name="wiki.html", context={
+    return templates.TemplateResponse(request=request, name="wiki.html", context=_ctx({
         "title": f"{post.get('zh_name')} · Coach KB",
         "zh_name": post.get("zh_name"),
         "en_name": post.get("en_name"),
@@ -96,19 +96,17 @@ def wiki(request: Request, slug: str):
         "levels": post.get("levels", []),
         "html": html,
         "all": list_competencies(),
-    })
+    }))
 
 
 @app.get("/qa", response_class=HTMLResponse)
 def qa_page(request: Request):
-    return templates.TemplateResponse(request=request, name="qa.html",
-                                       context={"competencies": list_competencies()})
+    return templates.TemplateResponse(request=request, name="qa.html", context=_ctx())
 
 
 @app.get("/eval", response_class=HTMLResponse)
 def eval_page(request: Request):
-    return templates.TemplateResponse(request=request, name="eval.html",
-                                       context={"competencies": list_competencies()})
+    return templates.TemplateResponse(request=request, name="eval.html", context=_ctx())
 
 
 @app.get("/resources", response_class=HTMLResponse)
@@ -118,7 +116,7 @@ def resources_page(request: Request):
         raise HTTPException(404, "资源索引未就绪")
     post = frontmatter.load(f)
     html = md_lib.markdown(post.content, extensions=["fenced_code", "tables", "toc"])
-    return templates.TemplateResponse(request=request, name="wiki.html", context={
+    return templates.TemplateResponse(request=request, name="wiki.html", context=_ctx({
         "title": "中文教练资源精选 · Coach KB",
         "zh_name": post.get("title", "中文教练资源精选"),
         "en_name": "Curated Chinese Coaching Resources",
@@ -127,7 +125,7 @@ def resources_page(request: Request):
         "levels": [],
         "html": html,
         "all": list_competencies(),
-    })
+    }))
 
 
 @app.get("/api")
