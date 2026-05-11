@@ -93,7 +93,7 @@ async def evaluate(transcript: str, conn) -> dict:
     system = build_system_prompt(competencies)
     raw = ""
     try:
-        raw = await llm.chat_complete(system=system, user=transcript, max_tokens=4096)
+        raw = await llm.chat_complete(system=system, user=transcript, max_tokens=8192)
         return _parse_and_validate(raw, transcript)
     except Exception as first_error:
         repair_system = (
@@ -108,7 +108,7 @@ async def evaluate(transcript: str, conn) -> dict:
         )
         repaired = ""
         try:
-            repaired = await llm.chat_complete(system=repair_system, user=repair_user, max_tokens=4096)
+            repaired = await llm.chat_complete(system=repair_system, user=repair_user, max_tokens=8192)
             return _parse_and_validate(repaired, transcript)
         except Exception as second_error:
             return {
