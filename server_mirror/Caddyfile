@@ -1,7 +1,27 @@
 www.ai-coach.com.cn, ai-coach.com.cn {
     encode gzip
-    reverse_proxy backend:8000
     log {
         output file /var/log/caddy/access.log
     }
+
+    # IP 黑名单（高频扫站机器人，2026-05-12 加 4 个）
+    @banned_ip client_ip 15.223.232.245/32 65.2.56.179/32 45.148.10.5/32 5.255.104.20/32
+    handle @banned_ip {
+        respond "Banned" 403
+    }
+
+    # WAF: 恶意路径
+    @bad {
+        path /.env* /.git* /wp-* /wordpress* /proxy* /api/fetch* /admin* /phpmyadmin* /xmlrpc.php /vendor/* /config/* /.aws/* /.ssh/* /backup* /db.sql* /.htaccess /server-status /actuator/* /api/v1/auth* /telescope/* /debug/* /console/* /shell*
+    }
+    handle @bad {
+        respond "Forbidden" 403
+    }
+
+    @badua header_regexp User-Agent (?i)(masscan|nmap|nikto|sqlmap|acunetix|nessus|gobuster|dirbuster|wpscan)
+    handle @badua {
+        respond "Forbidden" 403
+    }
+
+    reverse_proxy backend:8000
 }
