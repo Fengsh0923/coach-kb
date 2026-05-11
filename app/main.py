@@ -201,3 +201,51 @@ async def qa(request: Request):
 
 
 app.include_router(routes_eval.router)
+
+
+# ─── SEO + feedback + sitemap ───────────────────────────────────────────────
+
+from fastapi.responses import PlainTextResponse, Response
+
+
+@app.get("/robots.txt", response_class=PlainTextResponse)
+def robots():
+    return ("User-agent: *\nAllow: /\n"
+            "Sitemap: https://www.ai-coach.com.cn/sitemap.xml\n")
+
+
+@app.get("/sitemap.xml")
+def sitemap():
+    urls = [
+        ("https://www.ai-coach.com.cn/", "1.0", "weekly"),
+        ("https://www.ai-coach.com.cn/qa", "0.9", "weekly"),
+        ("https://www.ai-coach.com.cn/eval", "0.9", "weekly"),
+    ]
+    for c in list_competencies():
+        urls.append((f"https://www.ai-coach.com.cn/wiki/{c['slug']}", "0.8", "monthly"))
+    body = '<?xml version="1.0" encoding="UTF-8"?>\n'
+    body += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+    for u, p, f in urls:
+        body += f"  <url><loc>{u}</loc><priority>{p}</priority><changefreq>{f}</changefreq></url>\n"
+    body += "</urlset>\n"
+    return Response(body, media_type="application/xml")
+
+
+@app.post("/api/feedback")
+async def feedback(request: Request):
+    body = await request.json()
+    score = body.get("score")
+    question = (body.get("q") or "").strip()
+    if score not in (1, -1) or not question:
+        return JSONResponse({"error": "score must be 1 or -1, q required"}, status_code=400)
+    try:
+        with db.connect() as conn:
+            conn.execute(
+                "UPDATE qa_log SET feedback_score = ? "
+                "WHERE id = (SELECT id FROM qa_log WHERE question = ? ORDER BY ts DESC LIMIT 1)",
+                (score, question),
+            )
+            conn.commit()
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+    return {"ok": True}
