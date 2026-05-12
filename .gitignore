@@ -12,3 +12,5 @@ caddy_config/
 node_modules/
 dist/
 _BRIEF_*.md
+.venv*/
+.pytest_cache/
