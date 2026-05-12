@@ -115,6 +115,14 @@ def db_conn(tmp_db_path):
       practice_coachpro_client TEXT,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
+    CREATE TABLE IF NOT EXISTS user_pseudo (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      pseudo_id TEXT UNIQUE NOT NULL,
+      export_token TEXT UNIQUE NOT NULL,
+      progress_json TEXT NOT NULL DEFAULT '{}',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
     """
     conn.executescript(simplified)
     yield conn

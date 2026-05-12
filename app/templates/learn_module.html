@@ -154,10 +154,11 @@ function renderState() {
   }
 }
 
-function toggleComplete() {
+async function toggleComplete() {
   const p = getProgress();
   if (p[slug] === 'done') {
     delete p[slug];
+    delete p[slug + '_completed_at'];
   } else {
     p[slug] = 'done';
     p[slug + '_completed_at'] = new Date().toISOString();
@@ -168,6 +169,33 @@ function toggleComplete() {
   document.querySelectorAll('nav.side a.mod').forEach(a => {
     a.classList.toggle('done', getProgress()[a.dataset.slug] === 'done');
   });
+  // 推到后端（best-effort，离线也不影响本地）
+  const pid = localStorage.getItem('coach-kb-pseudo-id');
+  if (pid) {
+    try {
+      await fetch('/api/progress/' + pid, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({progress: p}),
+      });
+    } catch(_) {}
+  } else {
+    // 第一次完成时还没 pseudo_id → 创建一个
+    try {
+      const r = await fetch('/api/progress/new', {method: 'POST'});
+      if (r.ok) {
+        const data = await r.json();
+        localStorage.setItem('coach-kb-pseudo-id', data.pseudo_id);
+        localStorage.setItem('coach-kb-export-token', data.export_token);
+        // 立即推当前进度
+        await fetch('/api/progress/' + data.pseudo_id, {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({progress: p}),
+        });
+      }
+    } catch(_) {}
+  }
 }
 
 // 初始侧栏标记

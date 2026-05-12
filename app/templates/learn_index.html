@@ -96,9 +96,27 @@ footer { padding: 40px 0 30px; color: #999; font-size: 0.85rem; text-align: cent
     {% endfor %}
   </section>
 
-  <p style="text-align:center;color:#999;font-size:0.86rem;">
-    进度本地存储 · <button class="reset-btn" onclick="if(confirm('确认重置进度？')){localStorage.removeItem('coach-kb-progress');location.reload();}">重置进度</button>
-  </p>
+  <div id="sync-card" style="margin:30px 0 14px;padding:14px 18px;background:white;border:1px solid #e5e5e0;border-radius:8px;font-size:0.9rem;color:#666;">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+      <span>💾 进度状态：<span id="sync-status" style="color:#999;">检查中…</span></span>
+      <span>
+        <button class="reset-btn" id="export-btn" onclick="showExport()">📤 导出 Token</button>
+        <button class="reset-btn" onclick="showImport()">📥 在其他设备导入</button>
+        <button class="reset-btn" onclick="resetProgress()">重置</button>
+      </span>
+    </div>
+    <div id="export-display" style="display:none;margin-top:10px;padding:10px;background:#fff7ed;border:1px solid #fed7aa;border-radius:5px;">
+      <strong>你的 Token（在新设备输入它即可恢复进度）：</strong><br>
+      <code id="export-token" style="font-size:1.1rem;color:#c2410c;font-weight:600;letter-spacing:1px;"></code>
+      <button class="reset-btn" onclick="copyToken()" style="margin-left:8px;">复制</button>
+      <p style="margin-top:8px;color:#9a3412;font-size:0.83rem;">⚠️ 妥善保存——丢失就找不回进度（无邮箱/手机绑定）。</p>
+    </div>
+    <div id="import-form" style="display:none;margin-top:10px;padding:10px;background:#f0f9ff;border:1px solid #93c5fd;border-radius:5px;">
+      <input id="import-input" placeholder="COACH-XXXX-XXXX" style="padding:6px 10px;border:1px solid #d4d4d0;border-radius:4px;font-family:ui-monospace,monospace;width:200px;text-transform:uppercase;">
+      <button class="reset-btn" onclick="doImport()">导入</button>
+      <span id="import-msg" style="margin-left:10px;font-size:0.85rem;"></span>
+    </div>
+  </div>
 </main>
 
 {% include "_icp.html" %}
@@ -108,43 +126,169 @@ function getProgress() {
   try { return JSON.parse(localStorage.getItem('coach-kb-progress') || '{}'); }
   catch(_) { return {}; }
 }
-const progress = getProgress();
-const cards = document.querySelectorAll('.module-card');
-let done = 0, firstUndone = null;
-cards.forEach(c => {
-  const slug = c.dataset.slug;
-  if (progress[slug] === 'done') {
-    c.classList.add('done');
-    c.querySelector('.module-status').textContent = '已完成';
-    done++;
-  } else if (!firstUndone) {
-    firstUndone = c;
-    c.classList.add('current');
-    c.querySelector('.module-status').textContent = '继续学习 →';
+function saveProgressLocal(p) {
+  localStorage.setItem('coach-kb-progress', JSON.stringify(p));
+}
+function getPseudoId() {
+  return localStorage.getItem('coach-kb-pseudo-id');
+}
+function getExportToken() {
+  return localStorage.getItem('coach-kb-export-token');
+}
+
+// ─── 后端同步 ───
+async function ensurePseudoUser() {
+  let pid = getPseudoId();
+  if (pid) return pid;
+  try {
+    const r = await fetch('/api/progress/new', {method: 'POST'});
+    if (!r.ok) return null;
+    const data = await r.json();
+    localStorage.setItem('coach-kb-pseudo-id', data.pseudo_id);
+    localStorage.setItem('coach-kb-export-token', data.export_token);
+    return data.pseudo_id;
+  } catch(_) { return null; }
+}
+async function pullProgressFromBackend() {
+  const pid = getPseudoId();
+  if (!pid) return;
+  try {
+    const r = await fetch('/api/progress/' + pid);
+    if (!r.ok) return;
+    const data = await r.json();
+    if (data.export_token) localStorage.setItem('coach-kb-export-token', data.export_token);
+    if (data.progress && Object.keys(data.progress).length > 0) {
+      // 后端有进度——合并（后端为准时间戳更新的）
+      const local = getProgress();
+      const merged = {...local, ...data.progress};
+      saveProgressLocal(merged);
+    }
+  } catch(_) {}
+}
+async function pushProgressToBackend() {
+  const pid = getPseudoId();
+  if (!pid) return false;
+  try {
+    const r = await fetch('/api/progress/' + pid, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({progress: getProgress()})
+    });
+    return r.ok;
+  } catch(_) { return false; }
+}
+
+function showExport() {
+  const tok = getExportToken();
+  if (!tok) { alert('Token 还未生成，请先标记任意一个模块完成。'); return; }
+  document.getElementById('export-token').textContent = tok;
+  const el = document.getElementById('export-display');
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+  document.getElementById('import-form').style.display = 'none';
+}
+function showImport() {
+  const el = document.getElementById('import-form');
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+  document.getElementById('export-display').style.display = 'none';
+}
+async function copyToken() {
+  const tok = document.getElementById('export-token').textContent;
+  try { await navigator.clipboard.writeText(tok); alert('已复制'); }
+  catch(_) { prompt('复制以下 token:', tok); }
+}
+async function doImport() {
+  const input = document.getElementById('import-input');
+  const msg = document.getElementById('import-msg');
+  const token = input.value.trim().toUpperCase();
+  if (!token.startsWith('COACH-')) { msg.textContent = '格式错误'; msg.style.color = '#b91c1c'; return; }
+  msg.textContent = '导入中…'; msg.style.color = '#666';
+  try {
+    const r = await fetch('/api/progress/import', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({token})
+    });
+    if (!r.ok) {
+      const e = await r.json();
+      msg.textContent = '失败: ' + (e.error || '未知错误'); msg.style.color = '#b91c1c';
+      return;
+    }
+    const data = await r.json();
+    localStorage.setItem('coach-kb-pseudo-id', data.pseudo_id);
+    localStorage.setItem('coach-kb-export-token', data.export_token);
+    saveProgressLocal(data.progress || {});
+    msg.textContent = '✓ 已导入，刷新中…'; msg.style.color = '#166534';
+    setTimeout(() => location.reload(), 1000);
+  } catch(e) {
+    msg.textContent = '请求失败: ' + e.message; msg.style.color = '#b91c1c';
   }
-});
-const total = cards.length;
-const pct = total ? Math.round(done / total * 100) : 0;
-document.getElementById('pct').textContent = pct + '%';
-const circumference = 2 * Math.PI * 34;
-document.getElementById('ring').setAttribute('stroke-dashoffset', circumference * (1 - pct / 100));
-const h = document.getElementById('progress-h');
-const p = document.getElementById('progress-p');
-const cont = document.getElementById('continue');
-if (done === 0) {
-  h.textContent = '尚未开始';
-  cont.textContent = '从 M1 开始 →';
-  cont.href = firstUndone ? firstUndone.href : '#';
-} else if (done === total) {
-  h.textContent = '🎉 全部完成！';
-  p.textContent = '是时候找 ICF 培训机构开始正式 ACC 申请之路了';
-  cont.textContent = '查看 ICF 认证路径 →';
-  cont.href = '/wiki/tool_icf_certification_paths';
-} else {
-  h.textContent = '进行中 · ' + done + ' / ' + total + ' 完成';
-  p.textContent = '继续保持节奏，下一站：' + (firstUndone ? firstUndone.querySelector('.module-title').textContent : '');
-  cont.textContent = '继续 →';
-  cont.href = firstUndone ? firstUndone.href : '#';
+}
+function resetProgress() {
+  if (!confirm('确认重置？本地进度会清空，Token 仍可用。')) return;
+  localStorage.removeItem('coach-kb-progress');
+  // 不删 pseudo_id 和 token——保留账号但清进度
+  pushProgressToBackend();
+  location.reload();
+}
+
+// 启动时：拉后端进度合并 + 后续渲染
+(async () => {
+  await ensurePseudoUser();
+  await pullProgressFromBackend();
+  renderUI();
+  // 显示同步状态
+  const status = document.getElementById('sync-status');
+  if (getPseudoId()) {
+    status.textContent = '✓ 已同步到后端';
+    status.style.color = '#166534';
+  } else {
+    status.textContent = '⚠️ 仅本地存储（后端连接失败）';
+    status.style.color = '#92400e';
+  }
+})();
+
+function renderUI() {
+  const progress = getProgress();
+  const cards = document.querySelectorAll('.module-card');
+  let done = 0, firstUndone = null;
+  cards.forEach(c => {
+    const slug = c.dataset.slug;
+    c.classList.remove('done', 'current');
+    if (progress[slug] === 'done') {
+      c.classList.add('done');
+      c.querySelector('.module-status').textContent = '已完成';
+      done++;
+    } else if (!firstUndone) {
+      firstUndone = c;
+      c.classList.add('current');
+      c.querySelector('.module-status').textContent = '继续学习 →';
+    } else {
+      c.querySelector('.module-status').textContent = '未开始';
+    }
+  });
+  const total = cards.length;
+  const pct = total ? Math.round(done / total * 100) : 0;
+  document.getElementById('pct').textContent = pct + '%';
+  const circumference = 2 * Math.PI * 34;
+  document.getElementById('ring').setAttribute('stroke-dashoffset', circumference * (1 - pct / 100));
+  const h = document.getElementById('progress-h');
+  const p = document.getElementById('progress-p');
+  const cont = document.getElementById('continue');
+  if (done === 0) {
+    h.textContent = '尚未开始';
+    cont.textContent = '从 M1 开始 →';
+    cont.href = firstUndone ? firstUndone.href : '#';
+  } else if (done === total) {
+    h.textContent = '🎉 全部完成！';
+    p.textContent = '是时候找 ICF 培训机构开始正式 ACC 申请之路了';
+    cont.textContent = '查看 ICF 认证路径 →';
+    cont.href = '/wiki/tool_icf_certification_paths';
+  } else {
+    h.textContent = '进行中 · ' + done + ' / ' + total + ' 完成';
+    p.textContent = '继续保持节奏，下一站：' + (firstUndone ? firstUndone.querySelector('.module-title').textContent : '');
+    cont.textContent = '继续 →';
+    cont.href = firstUndone ? firstUndone.href : '#';
+  }
 }
 </script>
 </body>

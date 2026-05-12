@@ -74,7 +74,90 @@ CREATE TABLE IF NOT EXISTS learning_module (
   practice_coachpro_client TEXT,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
+CREATE TABLE IF NOT EXISTS user_pseudo (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  pseudo_id TEXT UNIQUE NOT NULL,
+  export_token TEXT UNIQUE NOT NULL,
+  progress_json TEXT NOT NULL DEFAULT '{}',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_pseudo_token ON user_pseudo(export_token);
 """
+
+
+# ─── user_pseudo helpers（匿名 UUID 跨设备进度同步）──────────────────────
+
+import secrets as _secrets
+
+
+def _gen_pseudo_id() -> str:
+    """16 字符 url-safe UUID"""
+    return _secrets.token_urlsafe(12)[:16]
+
+
+def _gen_export_token() -> str:
+    """便于人工输入的 12 字符 token，格式 COACH-XXXX-XXXX"""
+    alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"  # 去掉易混淆 I/O/0/1
+    chunk1 = "".join(_secrets.choice(alphabet) for _ in range(4))
+    chunk2 = "".join(_secrets.choice(alphabet) for _ in range(4))
+    return f"COACH-{chunk1}-{chunk2}"
+
+
+def create_pseudo_user(conn) -> dict:
+    """创建一个新的匿名用户，返回 {pseudo_id, export_token}。"""
+    # 重试最多 5 次防 token 碰撞（实际 32^8 = 1T 组合，碰撞极低）
+    for _ in range(5):
+        pid = _gen_pseudo_id()
+        tok = _gen_export_token()
+        try:
+            conn.execute(
+                "INSERT INTO user_pseudo (pseudo_id, export_token) VALUES (?, ?)",
+                (pid, tok),
+            )
+            conn.commit()
+            return {"pseudo_id": pid, "export_token": tok, "progress": {}}
+        except Exception:
+            continue
+    raise RuntimeError("create_pseudo_user: 5 次重试后仍 token 碰撞")
+
+
+def get_pseudo_progress(conn, pseudo_id: str) -> dict | None:
+    row = conn.execute(
+        "SELECT pseudo_id, export_token, progress_json FROM user_pseudo WHERE pseudo_id = ?",
+        (pseudo_id,),
+    ).fetchone()
+    if not row:
+        return None
+    try:
+        prog = json.loads(row["progress_json"] or "{}")
+    except Exception:
+        prog = {}
+    return {"pseudo_id": row["pseudo_id"], "export_token": row["export_token"], "progress": prog}
+
+
+def save_pseudo_progress(conn, pseudo_id: str, progress: dict) -> bool:
+    res = conn.execute(
+        "UPDATE user_pseudo SET progress_json = ?, updated_at = CURRENT_TIMESTAMP WHERE pseudo_id = ?",
+        (json.dumps(progress, ensure_ascii=False), pseudo_id),
+    )
+    conn.commit()
+    return res.rowcount > 0
+
+
+def find_pseudo_by_token(conn, export_token: str) -> dict | None:
+    """根据 export_token 查回 pseudo（用于跨设备导入）。"""
+    row = conn.execute(
+        "SELECT pseudo_id, export_token, progress_json FROM user_pseudo WHERE export_token = ?",
+        (export_token,),
+    ).fetchone()
+    if not row:
+        return None
+    try:
+        prog = json.loads(row["progress_json"] or "{}")
+    except Exception:
+        prog = {}
+    return {"pseudo_id": row["pseudo_id"], "export_token": row["export_token"], "progress": prog}
 
 
 def upsert_module(conn, *, slug, title, order_num, est_hours, content_md,

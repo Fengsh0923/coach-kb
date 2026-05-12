@@ -187,6 +187,71 @@ def api_learn_modules():
     ]}
 
 
+# ─── 匿名 UUID 进度同步（无登录、无 PII、export_token 跨设备）─────────────
+
+@app.post("/api/progress/new")
+def api_progress_new():
+    """创建一个匿名用户，返回 pseudo_id + export_token + 空进度。"""
+    try:
+        with db.connect() as conn:
+            return db.create_pseudo_user(conn)
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+@app.get("/api/progress/{pseudo_id}")
+def api_progress_get(pseudo_id: str):
+    """读取某个匿名用户的进度。"""
+    if not pseudo_id or len(pseudo_id) > 32:
+        return JSONResponse({"error": "invalid pseudo_id"}, status_code=400)
+    with db.connect() as conn:
+        data = db.get_pseudo_progress(conn, pseudo_id)
+    if not data:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    return data
+
+
+@app.post("/api/progress/import")
+async def api_progress_import(request: Request):
+    """凭 export_token 跨设备拉回进度（不修改原账号，新建一个本地映射）。
+
+    必须在 /api/progress/{pseudo_id} 之前注册——否则 import 会被当成 pseudo_id 参数。
+    """
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "invalid JSON"}, status_code=400)
+    token = (body.get("token") or "").strip().upper()
+    if not token or not token.startswith("COACH-"):
+        return JSONResponse({"error": "invalid token format"}, status_code=400)
+    with db.connect() as conn:
+        data = db.find_pseudo_by_token(conn, token)
+    if not data:
+        return JSONResponse({"error": "token not found"}, status_code=404)
+    return data
+
+
+@app.post("/api/progress/{pseudo_id}")
+async def api_progress_save(pseudo_id: str, request: Request):
+    """更新某个匿名用户的进度。"""
+    if not pseudo_id or len(pseudo_id) > 32:
+        return JSONResponse({"error": "invalid pseudo_id"}, status_code=400)
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "invalid JSON"}, status_code=400)
+    progress = body.get("progress")
+    if not isinstance(progress, dict):
+        return JSONResponse({"error": "progress must be an object"}, status_code=400)
+    if len(json.dumps(progress)) > 50_000:
+        return JSONResponse({"error": "progress too large (max 50KB)"}, status_code=413)
+    with db.connect() as conn:
+        ok = db.save_pseudo_progress(conn, pseudo_id, progress)
+    if not ok:
+        return JSONResponse({"error": "pseudo_id not found"}, status_code=404)
+    return {"ok": True}
+
+
 @app.get("/resources", response_class=HTMLResponse)
 def resources_page(request: Request):
     f = CONTENT_DIR / "resources_curated.md"
