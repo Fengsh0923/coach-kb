@@ -126,6 +126,62 @@ def eval_page(request: Request):
     return templates.TemplateResponse(request=request, name="eval.html", context=_ctx())
 
 
+@app.get("/learn", response_class=HTMLResponse)
+def learn_index(request: Request):
+    with db.connect() as conn:
+        modules = db.all_modules(conn)
+    return templates.TemplateResponse(request=request, name="learn_index.html",
+                                       context=_ctx({"modules": modules}))
+
+
+@app.get("/learn/{slug}", response_class=HTMLResponse)
+def learn_module_page(request: Request, slug: str):
+    with db.connect() as conn:
+        mod = db.get_module(conn, slug)
+        all_mods = db.all_modules(conn)
+    if not mod:
+        raise HTTPException(404, "模块未找到")
+    html = md_lib.markdown(mod["content_md"], extensions=["fenced_code", "tables", "toc"])
+    # 找上下一个模块用于导航
+    prev_mod = next_mod = None
+    for i, m in enumerate(all_mods):
+        if m["slug"] == slug:
+            if i > 0: prev_mod = all_mods[i-1]
+            if i < len(all_mods) - 1: next_mod = all_mods[i+1]
+            break
+    # 取 related wiki 标题
+    related_wiki = []
+    for ws in (mod.get("related_wiki_slugs") or []):
+        f = CONTENT_DIR / f"{ws}.md"
+        if f.exists():
+            try:
+                post = frontmatter.load(f)
+                related_wiki.append({
+                    "slug": ws,
+                    "title": post.get("zh_name") or post.get("title") or ws,
+                })
+            except Exception:
+                related_wiki.append({"slug": ws, "title": ws})
+    return templates.TemplateResponse(request=request, name="learn_module.html", context=_ctx({
+        "module": mod,
+        "html": html,
+        "related_wiki": related_wiki,
+        "prev_mod": prev_mod,
+        "next_mod": next_mod,
+        "all_mods": all_mods,
+    }))
+
+
+@app.get("/api/learn/modules")
+def api_learn_modules():
+    with db.connect() as conn:
+        mods = db.all_modules(conn)
+    return {"modules": [
+        {"slug": m["slug"], "title": m["title"], "order_num": m["order_num"], "est_hours": m["est_hours"]}
+        for m in mods
+    ]}
+
+
 @app.get("/resources", response_class=HTMLResponse)
 def resources_page(request: Request):
     f = CONTENT_DIR / "resources_curated.md"

@@ -16,6 +16,7 @@ CONTENT_DIR = Path(__file__).parent / "content"
 async def main():
     db.init_schema()
     files = sorted(list(CONTENT_DIR.glob("competency_*.md")) + list(CONTENT_DIR.glob("tool_*.md")))
+    module_files = sorted(CONTENT_DIR.glob("module_*.md"))
     if not files:
         print("⚠️  no markdown files found in", CONTENT_DIR)
         return
@@ -50,6 +51,23 @@ async def main():
                 source_id=source_id,
             )
             print(f"  ✓ {f.stem} → doc_id={doc_id}")
+        # 入 learning_module 表（独立表，不进 doc/fts/vec）
+        if module_files:
+            print(f"loading {len(module_files)} learning modules…")
+            for f in module_files:
+                post = frontmatter.load(f)
+                db.upsert_module(
+                    conn,
+                    slug=f.stem,
+                    title=post.get("title", f.stem),
+                    order_num=int(post.get("order_num", 99)),
+                    est_hours=int(post.get("est_hours", 0)) if post.get("est_hours") else None,
+                    content_md=post.content,
+                    related_wiki_slugs=post.get("related_wiki_slugs", []),
+                    practice_coachpro_client=post.get("practice_coachpro_client"),
+                )
+                print(f"  ✓ {f.stem}")
+
         db.rebuild_fts(conn)
         print("FTS rebuilt.")
 

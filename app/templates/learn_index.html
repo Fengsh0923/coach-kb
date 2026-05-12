@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>教练自学课程 · Coach KB</title>
+<meta name="description" content="听过教练但不会做？8 个模块 ~90 小时，从零到 ACC 申请准备。">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; background: #fafaf7; color: #1a1a1a; line-height: 1.7; min-height: 100vh; }
+.container { max-width: 920px; margin: 0 auto; padding: 0 24px; }
+.crumb { padding: 18px 0 0; font-size: 0.88rem; color: #888; }
+.crumb a { color: #c2410c; text-decoration: none; }
+header { padding: 30px 0 30px; border-bottom: 1px solid #e5e5e0; }
+h1 { font-size: 2.2rem; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 10px; }
+h1 .accent { color: #c2410c; }
+.tagline { color: #666; font-size: 1.02rem; }
+.progress-card { background: white; border: 1px solid #e5e5e0; border-radius: 10px; padding: 22px 24px; margin: 30px 0 20px; display: flex; align-items: center; gap: 24px; }
+.progress-ring { width: 80px; height: 80px; position: relative; flex-shrink: 0; }
+.progress-ring svg { transform: rotate(-90deg); }
+.progress-ring .bg { stroke: #f0eee8; }
+.progress-ring .fg { stroke: #c2410c; transition: stroke-dashoffset 0.5s; }
+.progress-ring .pct { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.1rem; color: #c2410c; }
+.progress-text { flex: 1; }
+.progress-text h3 { font-size: 1.1rem; margin-bottom: 6px; }
+.progress-text p { color: #666; font-size: 0.93rem; }
+.continue-btn { padding: 10px 22px; background: #c2410c; color: white; text-decoration: none; border-radius: 6px; font-size: 0.95rem; white-space: nowrap; }
+.continue-btn:hover { background: #9a3412; }
+.modules { padding: 10px 0 50px; display: grid; gap: 14px; }
+.module-card { background: white; border: 1px solid #e5e5e0; border-radius: 10px; padding: 22px 24px; text-decoration: none; color: inherit; display: grid; grid-template-columns: 56px 1fr 100px; gap: 18px; align-items: center; transition: transform 0.15s, box-shadow 0.15s; }
+.module-card:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(0,0,0,0.05); }
+.module-num { width: 56px; height: 56px; background: #fff7ed; color: #c2410c; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.5rem; }
+.module-card.done .module-num { background: #dcfce7; color: #166534; }
+.module-card.done .module-num::after { content: "✓"; }
+.module-card.done .module-num .order { display: none; }
+.module-title { font-size: 1.08rem; font-weight: 600; margin-bottom: 4px; }
+.module-meta { color: #888; font-size: 0.86rem; }
+.module-status { text-align: right; font-size: 0.85rem; color: #999; }
+.module-card.done .module-status { color: #166534; font-weight: 600; }
+.module-card.current { border-color: #c2410c; border-width: 2px; }
+.module-card.current .module-status { color: #c2410c; font-weight: 600; }
+.intro { padding: 14px 18px; background: #fff7ed; border: 1px solid #fed7aa; border-radius: 8px; margin: 18px 0; font-size: 0.92rem; color: #9a3412; }
+footer { padding: 40px 0 30px; color: #999; font-size: 0.85rem; text-align: center; border-top: 1px solid #e5e5e0; }
+.reset-btn { background: none; border: 1px solid #ddd; color: #999; padding: 4px 10px; border-radius: 4px; font-size: 0.78rem; cursor: pointer; margin-left: 12px; }
+.reset-btn:hover { color: #666; border-color: #999; }
+@media (max-width: 700px) {
+  .module-card { grid-template-columns: 44px 1fr; }
+  .module-status { grid-column: 2; text-align: left; padding-top: 6px; }
+  .progress-card { flex-direction: column; text-align: center; }
+  h1 { font-size: 1.7rem; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="crumb"><a href="/">← 首页</a></div>
+</div>
+
+<header>
+  <div class="container">
+    <h1>教练自学课程<span class="accent">  ·  90 小时小白到 ACC</span></h1>
+    <p class="tagline">8 个模块 · 听过教练但不会做？这里把 26 篇 wiki 串成一条完整学习路径，每模块含 AI 客户陪练实战。</p>
+  </div>
+</header>
+
+<main class="container">
+  <div class="progress-card">
+    <div class="progress-ring">
+      <svg width="80" height="80">
+        <circle class="bg" cx="40" cy="40" r="34" fill="none" stroke-width="8"/>
+        <circle class="fg" cx="40" cy="40" r="34" fill="none" stroke-width="8" id="ring" stroke-dasharray="213.6" stroke-dashoffset="213.6" stroke-linecap="round"/>
+      </svg>
+      <div class="pct" id="pct">0%</div>
+    </div>
+    <div class="progress-text">
+      <h3 id="progress-h">尚未开始</h3>
+      <p id="progress-p">建议每周投入 8 小时 · 3-4 个月走完全程</p>
+    </div>
+    <a href="#" id="continue" class="continue-btn">开始学习 →</a>
+  </div>
+
+  <div class="intro">
+    💡 <strong>学习闭环</strong>：每模块「读 wiki → 实战练习 → 用 <a href="/eval" style="color:#c2410c;font-weight:600;">/eval</a> 拆解 → 回看薄弱点」。进度本地保存（不需要注册）。换浏览器或清缓存会丢，建议在常用电脑上学。
+  </div>
+
+  <section class="modules" id="modules">
+    {% for m in modules %}
+      <a class="module-card" data-slug="{{ m.slug }}" href="/learn/{{ m.slug }}">
+        <div class="module-num"><span class="order">{{ m.order_num }}</span></div>
+        <div>
+          <div class="module-title">M{{ m.order_num }} · {{ m.title }}</div>
+          <div class="module-meta">预计 {{ m.est_hours or "?" }} 小时</div>
+        </div>
+        <div class="module-status">未开始</div>
+      </a>
+    {% endfor %}
+  </section>
+
+  <p style="text-align:center;color:#999;font-size:0.86rem;">
+    进度本地存储 · <button class="reset-btn" onclick="if(confirm('确认重置进度？')){localStorage.removeItem('coach-kb-progress');location.reload();}">重置进度</button>
+  </p>
+</main>
+
+{% include "_icp.html" %}
+
+<script>
+function getProgress() {
+  try { return JSON.parse(localStorage.getItem('coach-kb-progress') || '{}'); }
+  catch(_) { return {}; }
+}
+const progress = getProgress();
+const cards = document.querySelectorAll('.module-card');
+let done = 0, firstUndone = null;
+cards.forEach(c => {
+  const slug = c.dataset.slug;
+  if (progress[slug] === 'done') {
+    c.classList.add('done');
+    c.querySelector('.module-status').textContent = '已完成';
+    done++;
+  } else if (!firstUndone) {
+    firstUndone = c;
+    c.classList.add('current');
+    c.querySelector('.module-status').textContent = '继续学习 →';
+  }
+});
+const total = cards.length;
+const pct = total ? Math.round(done / total * 100) : 0;
+document.getElementById('pct').textContent = pct + '%';
+const circumference = 2 * Math.PI * 34;
+document.getElementById('ring').setAttribute('stroke-dashoffset', circumference * (1 - pct / 100));
+const h = document.getElementById('progress-h');
+const p = document.getElementById('progress-p');
+const cont = document.getElementById('continue');
+if (done === 0) {
+  h.textContent = '尚未开始';
+  cont.textContent = '从 M1 开始 →';
+  cont.href = firstUndone ? firstUndone.href : '#';
+} else if (done === total) {
+  h.textContent = '🎉 全部完成！';
+  p.textContent = '是时候找 ICF 培训机构开始正式 ACC 申请之路了';
+  cont.textContent = '查看 ICF 认证路径 →';
+  cont.href = '/wiki/tool_icf_certification_paths';
+} else {
+  h.textContent = '进行中 · ' + done + ' / ' + total + ' 完成';
+  p.textContent = '继续保持节奏，下一站：' + (firstUndone ? firstUndone.querySelector('.module-title').textContent : '');
+  cont.textContent = '继续 →';
+  cont.href = firstUndone ? firstUndone.href : '#';
+}
+</script>
+</body>
+</html>

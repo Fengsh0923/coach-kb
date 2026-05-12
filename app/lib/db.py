@@ -65,7 +65,70 @@ CREATE TABLE IF NOT EXISTS usage_log (
   ts DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_usage_ts ON usage_log(ts);
+CREATE TABLE IF NOT EXISTS learning_module (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  slug TEXT UNIQUE NOT NULL,
+  title TEXT NOT NULL,
+  order_num INTEGER NOT NULL,
+  est_hours INTEGER,
+  content_md TEXT NOT NULL,
+  related_wiki_slugs TEXT,
+  practice_coachpro_client TEXT,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
 """
+
+
+def upsert_module(conn, *, slug, title, order_num, est_hours, content_md,
+                   related_wiki_slugs=None, practice_coachpro_client=None):
+    """Upsert a learning module record (idempotent on slug)."""
+    import json as _json
+    conn.execute(
+        "INSERT INTO learning_module (slug, title, order_num, est_hours, content_md, "
+        "related_wiki_slugs, practice_coachpro_client) VALUES (?, ?, ?, ?, ?, ?, ?) "
+        "ON CONFLICT(slug) DO UPDATE SET title=excluded.title, order_num=excluded.order_num, "
+        "est_hours=excluded.est_hours, content_md=excluded.content_md, "
+        "related_wiki_slugs=excluded.related_wiki_slugs, "
+        "practice_coachpro_client=excluded.practice_coachpro_client, "
+        "updated_at=CURRENT_TIMESTAMP",
+        (slug, title, order_num, est_hours, content_md,
+         _json.dumps(related_wiki_slugs or [], ensure_ascii=False),
+         practice_coachpro_client),
+    )
+
+
+def all_modules(conn) -> list[dict]:
+    rows = conn.execute(
+        "SELECT slug, title, order_num, est_hours, content_md, related_wiki_slugs, "
+        "practice_coachpro_client FROM learning_module ORDER BY order_num"
+    ).fetchall()
+    import json as _json
+    out = []
+    for r in rows:
+        d = dict(r)
+        try:
+            d["related_wiki_slugs"] = _json.loads(d["related_wiki_slugs"] or "[]")
+        except Exception:
+            d["related_wiki_slugs"] = []
+        out.append(d)
+    return out
+
+
+def get_module(conn, slug: str) -> dict | None:
+    row = conn.execute(
+        "SELECT slug, title, order_num, est_hours, content_md, related_wiki_slugs, "
+        "practice_coachpro_client FROM learning_module WHERE slug = ?",
+        (slug,),
+    ).fetchone()
+    if not row:
+        return None
+    import json as _json
+    d = dict(row)
+    try:
+        d["related_wiki_slugs"] = _json.loads(d["related_wiki_slugs"] or "[]")
+    except Exception:
+        d["related_wiki_slugs"] = []
+    return d
 
 
 def log_usage(*, endpoint: str, provider: str, model: str,

@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>M{{ module.order_num }} {{ module.title }} · Coach KB</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; background: #fafaf7; color: #1a1a1a; line-height: 1.8; min-height: 100vh; }
+.layout { display: grid; grid-template-columns: 240px 1fr; max-width: 1180px; margin: 0 auto; gap: 40px; padding: 30px 24px 80px; }
+nav.side { position: sticky; top: 30px; align-self: start; max-height: calc(100vh - 60px); overflow-y: auto; }
+nav.side a.home { display: block; font-weight: 700; color: #c2410c; text-decoration: none; margin-bottom: 16px; font-size: 1.05rem; }
+nav.side h3 { font-size: 0.78rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #999; margin: 14px 0 8px; }
+nav.side a.mod { display: flex; align-items: center; gap: 8px; padding: 8px 10px; color: #444; text-decoration: none; border-radius: 5px; font-size: 0.92rem; margin-bottom: 2px; }
+nav.side a.mod:hover { background: #f5f1e8; color: #c2410c; }
+nav.side a.mod.active { background: #c2410c; color: white; font-weight: 500; }
+nav.side a.mod .num { width: 22px; flex-shrink: 0; font-weight: 600; }
+nav.side a.mod.done::after { content: "✓"; color: #166534; font-weight: 700; margin-left: auto; }
+nav.side a.mod.active.done::after { color: white; }
+main { min-width: 0; max-width: 760px; }
+.crumb { font-size: 0.88rem; color: #888; margin-bottom: 14px; }
+.crumb a { color: #c2410c; text-decoration: none; }
+.module-head { padding: 20px 24px; background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%); border-radius: 10px; margin-bottom: 26px; }
+.module-head .label { color: #c2410c; font-size: 0.85rem; font-weight: 600; letter-spacing: 0.04em; }
+.module-head h1 { font-size: 1.8rem; font-weight: 700; margin: 6px 0 10px; }
+.module-head .meta { color: #92400e; font-size: 0.9rem; }
+article h2 { font-size: 1.3rem; margin: 30px 0 12px; padding-bottom: 8px; border-bottom: 1px solid #e5e5e0; font-weight: 600; }
+article h3 { font-size: 1.05rem; margin: 20px 0 8px; font-weight: 600; }
+article p { margin-bottom: 12px; }
+article ul, article ol { margin: 10px 0 14px 22px; }
+article li { margin-bottom: 6px; }
+article blockquote { border-left: 3px solid #c2410c; padding: 4px 0 4px 16px; margin: 12px 0; color: #555; background: #fff8f0; }
+article code { background: #f0ebe0; padding: 2px 6px; border-radius: 3px; font-size: 0.9em; font-family: ui-monospace, monospace; }
+article a { color: #c2410c; text-decoration: underline; text-underline-offset: 2px; }
+article hr { border: none; border-top: 1px solid #e5e5e0; margin: 24px 0; }
+article strong { color: #1a1a1a; }
+
+.required-reading { background: white; border: 1px solid #e5e5e0; border-radius: 8px; padding: 16px 20px; margin: 20px 0; }
+.required-reading h3 { font-size: 0.95rem; color: #c2410c; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+.required-reading ul { list-style: none; margin: 0; padding: 0; }
+.required-reading li { padding: 6px 0; border-bottom: 1px solid #f5f1e8; }
+.required-reading li:last-child { border-bottom: none; }
+.required-reading a { color: #c2410c; text-decoration: none; font-weight: 500; }
+.required-reading a:hover { text-decoration: underline; }
+
+.actions { background: white; border: 1.5px solid #c2410c; border-radius: 10px; padding: 20px 24px; margin: 28px 0; }
+.actions h3 { color: #c2410c; font-size: 1rem; margin-bottom: 12px; }
+.complete-btn { padding: 12px 26px; background: #c2410c; color: white; border: none; border-radius: 6px; font-size: 0.98rem; font-family: inherit; cursor: pointer; font-weight: 500; }
+.complete-btn:hover { background: #9a3412; }
+.complete-btn.done { background: #166534; }
+.complete-btn.done:hover { background: #14532d; }
+.action-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.action-row .hint { color: #888; font-size: 0.88rem; }
+
+.module-nav { display: flex; justify-content: space-between; padding: 24px 0; border-top: 1px solid #e5e5e0; margin-top: 30px; gap: 12px; }
+.nav-btn { padding: 12px 20px; background: white; border: 1px solid #d4d4d0; border-radius: 6px; text-decoration: none; color: #444; font-size: 0.92rem; flex: 1; max-width: 320px; }
+.nav-btn:hover { border-color: #c2410c; color: #c2410c; }
+.nav-btn.next { text-align: right; }
+.nav-btn .label { font-size: 0.78rem; color: #888; display: block; margin-bottom: 2px; }
+.nav-btn .title { font-weight: 600; }
+
+@media (max-width: 760px) {
+  .layout { grid-template-columns: 1fr; }
+  nav.side { position: static; max-height: none; padding: 14px; background: white; border-radius: 8px; border: 1px solid #e5e5e0; }
+  .module-head h1 { font-size: 1.4rem; }
+}
+</style>
+</head>
+<body>
+<div class="layout">
+<nav class="side">
+  <a class="home" href="/learn">← 课程总览</a>
+  <h3>8 个模块</h3>
+  {% for m in all_mods %}
+    <a class="mod {% if m.slug == module.slug %}active{% endif %}" data-slug="{{ m.slug }}" href="/learn/{{ m.slug }}">
+      <span class="num">M{{ m.order_num }}</span>
+      <span>{{ m.title }}</span>
+    </a>
+  {% endfor %}
+</nav>
+
+<main>
+  <div class="crumb"><a href="/">首页</a> / <a href="/learn">课程</a> / M{{ module.order_num }}</div>
+
+  <div class="module-head">
+    <div class="label">MODULE {{ module.order_num }} · 预计 {{ module.est_hours }} 小时</div>
+    <h1>{{ module.title }}</h1>
+    <div class="meta">学完后能 → 详见正文学习目标</div>
+  </div>
+
+  {% if related_wiki %}
+  <div class="required-reading">
+    <h3>📖 必读 wiki（先读再回来）</h3>
+    <ul>
+      {% for w in related_wiki %}
+        <li>→ <a href="/wiki/{{ w.slug }}">{{ w.title }}</a></li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  <article>{{ html | safe }}</article>
+
+  <div class="actions">
+    <h3>✅ 学完了？</h3>
+    <div class="action-row">
+      <button class="complete-btn" id="complete-btn" onclick="toggleComplete()">标记完成 M{{ module.order_num }}</button>
+      <span class="hint">完成后会在 <a href="/learn">课程总览</a> 显示 ✓，自动推进到下个模块</span>
+    </div>
+  </div>
+
+  <div class="module-nav">
+    {% if prev_mod %}
+      <a class="nav-btn" href="/learn/{{ prev_mod.slug }}">
+        <span class="label">← 上一模块</span>
+        <span class="title">M{{ prev_mod.order_num }} · {{ prev_mod.title }}</span>
+      </a>
+    {% else %}
+      <span></span>
+    {% endif %}
+    {% if next_mod %}
+      <a class="nav-btn next" href="/learn/{{ next_mod.slug }}">
+        <span class="label">下一模块 →</span>
+        <span class="title">M{{ next_mod.order_num }} · {{ next_mod.title }}</span>
+      </a>
+    {% endif %}
+  </div>
+</main>
+</div>
+{% include "_icp.html" %}
+
+<script>
+const slug = "{{ module.slug }}";
+
+function getProgress() {
+  try { return JSON.parse(localStorage.getItem('coach-kb-progress') || '{}'); }
+  catch(_) { return {}; }
+}
+function saveProgress(p) {
+  localStorage.setItem('coach-kb-progress', JSON.stringify(p));
+}
+
+const progress = getProgress();
+const btn = document.getElementById('complete-btn');
+
+function renderState() {
+  const isDone = getProgress()[slug] === 'done';
+  if (isDone) {
+    btn.classList.add('done');
+    btn.textContent = '✓ 已完成（点击取消）';
+  } else {
+    btn.classList.remove('done');
+    btn.textContent = '标记完成 M{{ module.order_num }}';
+  }
+}
+
+function toggleComplete() {
+  const p = getProgress();
+  if (p[slug] === 'done') {
+    delete p[slug];
+  } else {
+    p[slug] = 'done';
+    p[slug + '_completed_at'] = new Date().toISOString();
+  }
+  saveProgress(p);
+  renderState();
+  // 同步侧栏
+  document.querySelectorAll('nav.side a.mod').forEach(a => {
+    a.classList.toggle('done', getProgress()[a.dataset.slug] === 'done');
+  });
+}
+
+// 初始侧栏标记
+document.querySelectorAll('nav.side a.mod').forEach(a => {
+  if (getProgress()[a.dataset.slug] === 'done') a.classList.add('done');
+});
+
+renderState();
+
+// 外链自动新 tab
+document.querySelectorAll('article a[href]').forEach(a => {
+  const href = a.getAttribute('href');
+  if (href && (href.startsWith('http://') || href.startsWith('https://'))) {
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+  }
+});
+</script>
+</body>
+</html>
