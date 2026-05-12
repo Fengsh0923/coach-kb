@@ -7,10 +7,10 @@ import types
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "app"))
-sys.modules.setdefault("sqlite_vec", types.SimpleNamespace(load=lambda conn: None))
-sys.modules.setdefault("frontmatter", types.SimpleNamespace())
+# sqlite_vec stub 已在 conftest.py 统一管理（覆盖 set，不用 setdefault）
+# frontmatter 真装在 requirements-dev.txt（不用 stub）
 
-from lib import eval as eval_mod
+from lib import eval as eval_mod  # noqa: E402
 
 
 class DummyConn:

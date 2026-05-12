@@ -122,7 +122,9 @@ async def chat_stream(*, system: str, user: str, max_tokens: int = 2048) -> Asyn
             },
         ) as r:
             r.raise_for_status()
-            in_t = 0; out_t = 0; actual_model = LLM_MODEL_FAST
+            in_t = 0
+            out_t = 0
+            actual_model = LLM_MODEL_FAST
             async for line in r.aiter_lines():
                 if not line.startswith("data: "):
                     continue

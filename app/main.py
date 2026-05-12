@@ -10,14 +10,16 @@ Routes:
   GET  /health            — health check
 """
 from __future__ import annotations
-import asyncio
+import asyncio  # noqa: F401  (保留：旧代码部分依赖)
 import json
-import os
+import os  # noqa: F401  (env 由 lib/llm 内部读)
+import time as _time
+from collections import defaultdict, deque
 from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import FastAPI, Request, HTTPException
-from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse, PlainTextResponse, Response
 from fastapi.templating import Jinja2Templates
 import frontmatter
 import markdown as md_lib
@@ -87,7 +89,8 @@ ICP_URL = "https://beian.miit.gov.cn/"
 def _ctx(extra: dict | None = None) -> dict:
     base = {"competencies": list_competencies(), "tools": list_tools(),
             "icp": ICP_FILING, "icp_url": ICP_URL}
-    if extra: base.update(extra)
+    if extra:
+        base.update(extra)
     return base
 
 
@@ -146,8 +149,10 @@ def learn_module_page(request: Request, slug: str):
     prev_mod = next_mod = None
     for i, m in enumerate(all_mods):
         if m["slug"] == slug:
-            if i > 0: prev_mod = all_mods[i-1]
-            if i < len(all_mods) - 1: next_mod = all_mods[i+1]
+            if i > 0:
+                prev_mod = all_mods[i-1]
+            if i < len(all_mods) - 1:
+                next_mod = all_mods[i+1]
             break
     # 取 related wiki 标题
     related_wiki = []
@@ -254,8 +259,6 @@ async def search(q: str = "", k: int = 10):
 
 
 # /api/qa 单 IP 限速：5 次/分钟 + 50 次/小时（防 LLM 滥用烧钱）
-import time as _time
-from collections import defaultdict, deque
 _qa_minute: dict[str, deque] = defaultdict(deque)
 _qa_hour: dict[str, deque] = defaultdict(deque)
 
@@ -279,7 +282,8 @@ def _qa_rate_limited(ip: str) -> tuple[bool, str]:
         h.popleft()
     if len(h) >= 50:
         return True, "50/hour exceeded"
-    m.append(now); h.append(now)
+    m.append(now)
+    h.append(now)
     return False, ""
 
 
@@ -348,8 +352,6 @@ app.include_router(routes_eval.router)
 
 
 # ─── SEO + feedback + sitemap ───────────────────────────────────────────────
-
-from fastapi.responses import PlainTextResponse, Response
 
 
 @app.get("/robots.txt", response_class=PlainTextResponse)

@@ -3,8 +3,6 @@ from __future__ import annotations
 import sqlite3
 import json
 from pathlib import Path
-from typing import Iterable
-import frontmatter
 import sqlite_vec
 
 DB_PATH = Path("/data/coach.db")

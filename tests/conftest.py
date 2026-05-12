@@ -26,17 +26,20 @@ sys.path.insert(0, str(APP_DIR))
 # 真实 sqlite_vec.load(conn) 会注册 vec0 虚拟表 + MATCH 操作符。
 # 测试里不真测向量检索精度，所以用 SQL UDF 替身让 vec0 表能 INSERT/SELECT。
 def _install_sqlite_vec_stub():
-    """Install minimal sqlite_vec replacement using regular Python tables."""
+    """Install minimal sqlite_vec replacement using regular Python tables.
+
+    强制覆盖（不用 setdefault）—— test_eval.py 顶部用 setdefault 设了空 SimpleNamespace
+    没有 load 方法，会让 db.py import 时崩。本 conftest 总是被 pytest 优先加载，
+    所以这里 set 后其他 test 文件的 setdefault 就跳过。
+    """
     fake = types.ModuleType("sqlite_vec")
 
     def load(conn):
-        # 创建 vec0 替身：用 BLOB 列存 embedding
-        # 真实 vec0 用 MATCH 查询，这里替换成简单 select（测试不依赖向量精度）
         conn.create_function("__vec_distance", 2, lambda a, b: 0.0)
         return None
 
     fake.load = load
-    sys.modules["sqlite_vec"] = fake
+    sys.modules["sqlite_vec"] = fake  # 强制覆盖
 
 _install_sqlite_vec_stub()
 
