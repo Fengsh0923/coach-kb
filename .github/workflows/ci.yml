@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Run pytest (101 tests)
+        run: |
+          pytest tests/ -v --tb=short
+
+      - name: Test coverage breakdown
+        if: always()
+        run: |
+          echo "=== Unit tests ==="
+          pytest tests/ -m unit --tb=no -q || true
+          echo "=== Integration tests ==="
+          pytest tests/ -m integration --tb=no -q || true
+
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    continue-on-error: true
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install ruff
+        run: pip install ruff
+
+      - name: Ruff check (non-blocking)
+        run: ruff check app/ tests/ --output-format=github || true
